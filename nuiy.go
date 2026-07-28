@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"log"
 	"bytes"
 	"flag"
 	"fmt"
@@ -103,7 +102,6 @@ func (i *arrayFlags) Set(value string) error {
 }
 
 func main() {
-	// Seed random generator
 	rand.Seed(time.Now().UnixNano())
 
 	var (
@@ -445,7 +443,6 @@ func udpFlood(host string) {
 	}
 	defer conn.Close()
 
-	// FIX: gunakan bytes.Repeat, bukan byte.Repeat
 	payload := bytes.Repeat([]byte{byte(rand.Intn(255))}, 1024*64)
 
 	for {
@@ -515,7 +512,7 @@ func buildRandomString(size int) string {
 }
 
 func buildGzipBomb(sizeMB int) string {
-	// ini hanya simulasi, bukan bomb gzip sungguhan
+	// simulasi saja, bukan bomb sebenarnya
 	compressed := strings.Repeat("A", sizeMB*1024*1024/100)
 	return compressed
 }
@@ -600,8 +597,6 @@ func generateReferers() {
 func statsPrinter(duration int) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
-
-	// Hapus variabel yang tidak digunakan: lastTotal, lastTime
 
 	for {
 		select {
