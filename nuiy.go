@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"log"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
